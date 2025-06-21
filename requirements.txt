@@ -3,4 +3,3 @@ imageio
 imageio-ffmpeg
 mediapipe
 opencv-python
-gradio
