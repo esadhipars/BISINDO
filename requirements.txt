@@ -1,5 +1,3 @@
 streamlit
 imageio
 imageio-ffmpeg
-mediapipe
-opencv-python
