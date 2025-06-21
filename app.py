@@ -1,55 +1,44 @@
-import gradio as gr
+import streamlit as st
+import tempfile
+import imageio
 import cv2
 import mediapipe as mp
-import tempfile
-import os
+import numpy as np
 
-# Inisialisasi model deteksi tangan
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
+st.set_page_config(page_title="Pembaca Bahasa Isyarat", layout="centered")
 
-def detect_hands(video_file):
-    temp_video_path = video_file.name
+st.title("📹 Pembaca Video Bahasa Isyarat")
+st.write("Unggah video berisi bahasa isyarat, nanti akan ditampilkan dan dideteksi tangan.")
 
-    # Buka video
-    cap = cv2.VideoCapture(temp_video_path)
+uploaded_file = st.file_uploader("Upload Video", type=["mp4", "mov", "avi"])
+
+if uploaded_file is not None:
+    # Simpan video ke file sementara
+    tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+    tfile.write(uploaded_file.read())
+
+    # Tampilkan video asli
+    st.video(tfile.name)
+
+    # Buka video dengan OpenCV
+    cap = cv2.VideoCapture(tfile.name)
+    mp_hands = mp.solutions.hands
+    mp_drawing = mp.solutions.drawing_utils
     hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2)
-    
-    frames = []
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
 
-        # Konversi warna dan deteksi tangan
-        image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        result = hands.process(image)
+    success, frame = cap.read()
+    if success:
+        # Proses frame pertama
+        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = hands.process(image_rgb)
 
-        if result.multi_hand_landmarks:
-            for hand_landmarks in result.multi_hand_landmarks:
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
                 mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-        frames.append(frame)
+        # Tampilkan frame dengan deteksi
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        st.image(frame_rgb, caption="Deteksi Tangan pada Frame Pertama")
 
     cap.release()
     hands.close()
-
-    # Simpan hasil video dengan tangan ditandai
-    output_path = tempfile.mktemp(suffix=".mp4")
-    height, width, _ = frames[0].shape
-    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), 10, (width, height))
-    for f in frames:
-        out.write(f)
-    out.release()
-
-    return output_path
-
-# Antarmuka Gradio
-demo = gr.Interface(
-    fn=detect_hands,
-    inputs=gr.Video(type="file"),
-    outputs=gr.Video()
-)
-
-if __name__ == "__main__":
-    demo.launch()
