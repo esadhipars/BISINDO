@@ -1,3 +1,2 @@
-gradio
-opencv-python
 mediapipe
+opencv-python
